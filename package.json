@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js",
-    "start-local": "set TELEGRAM_BOT_TOKEN=1258109450:AAFnq0eV1MZI6IOk5vLgpOQTghTPqFJYdGI&& node index.js"
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
