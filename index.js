@@ -4,10 +4,11 @@ const { getQ } = require('./db')
 
 var m_activeContexts = {}
 const { TELEGRAM_BOT_TOKEN } = process.env
+const URL = process.env.dbUrl || 'https://db.chgk.info/random'
 const helpText = 'Бот задает вопросы из базы данных ЧГК. Для игры отправьте боту /new. Чтобы получить ответ /a';
 
-const makeChgkUrl = (complexity = 1, type = 1) => {
-    return `https://db.chgk.info/random/answers/types${type}/complexity${complexity}/limit1`
+const makeChgkUrl = (complexity = 1, type = 1, showAmswer = true, limit = 1) => {
+    return `${URL}${showAmswer ? '/answers' : ''}${type ? `/types${type}` : ''}${complexity ? `/complexity${complexity}` : ''}${limit ? `/limit${limit}` : ''}`
 }
 
 
@@ -69,7 +70,7 @@ const getSessionKey = (ctx) => {
 }
 
 const prepareAnswer = (data) => {
-    return data && Object.keys(data).length>0
+    return data && Object.keys(data).length > 0
         ? `Ответ:${data.answer}
 ${ data.comment ? `Комментарий:${data.comment}\\n` : ''}Источник:${data.source}
 Автор:${data.author}
@@ -79,34 +80,54 @@ ${ data.comment ? `Комментарий:${data.comment}\\n` : ''}Источн�
 
 const prepareQuestion = (data) => {
     if (!data) return 'error'
-    return `${data.title}
-${data.text}`
+    return `${data.text}
+********
+${data.title}`
 }
 
 const isCorrectAnswer = (data, myAnswer) => {
     if (data.answer === myAnswer) return true
     if (data.answer2 === myAnswer) return true
 
+    const hypotese = prepareText(myAnswer)
     const ANSWER = prepareText(data.answer)
-    const d = levenshtein(ANSWER, myAnswer)
-    const delta = ANSWER.length - d
-    if (delta / ANSWER.length * 100 > 90) return true
+    if (areSentencesEqual(ANSWER,hypotese)) return true
 
     var isAnswer = false
-    const answers = data.answer2.split(/[,;]/)
+    const answers = data.answer2.split(/[,;|]/)
     answers.map(_answer => {
         const answer = prepareText(_answer)
-        const d = levenshtein(answer, myAnswer)
-        const delta = answer.length - d
-        if (delta / answer.length * 100 > 90) isAnswer = true
+        if (areSentencesEqual(answer,hypotese)) isAnswer = true
     })
     return isAnswer
 }
 
+const areSentencesEqual = (s1,s2) =>{
+    const wos1 = s1.split(' ')
+    const wos2 = s2.split(' ')
+    if(wod1.length!==wos2.length) return false
+    const numberOfMatchedWords = wos1.map(word1=>{
+        return wos2.filter(word2=>isWord2EqualsToWord1(word1,word2)).length>0
+    }).filter(result=>result).length
+    if(numberOfMatchedWords === wos1.length) return true
+    return false
+}
+
+const isWord2EqualsToWord1 = (word1, word2) =>{
+    if(word1 === word2) return true
+    const d = levenshtein(word1,word2)
+    const len = word1.length
+    if(len<6 && d<2) return true
+    else if(len<9 && d<3) return true
+    else if(len>8 && d<4) return true
+    return false
+}
+
 const prepareText = (text) => {
     const trim = text.trim()
-    if (trim.endsWith('.')) return trim.substr(0, trim.length - 1)
-    return trim
+    const noPunctuationString = trim.replace(/.,"'=-:;!?*/g,'')
+    //if (trim.endsWith('.')) return trim.substr(0, trim.length - 1)
+    return noPunctuationString
 }
 
 const levenshtein = (s1, s2, costs) => {
