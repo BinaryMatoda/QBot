@@ -105,7 +105,7 @@ const isCorrectAnswer = (data, myAnswer) => {
 const areSentencesEqual = (s1,s2) =>{
     const wos1 = s1.split(' ')
     const wos2 = s2.split(' ')
-    if(wod1.length!==wos2.length) return false
+    if(wos1.length!==wos2.length) return false
     const numberOfMatchedWords = wos1.map(word1=>{
         return wos2.filter(word2=>isWord2EqualsToWord1(word1,word2)).length>0
     }).filter(result=>result).length
@@ -125,7 +125,7 @@ const isWord2EqualsToWord1 = (word1, word2) =>{
 
 const prepareText = (text) => {
     const trim = text.trim()
-    const noPunctuationString = trim.replace(/[.,"'=-:;!?*]/g,'')
+    const noPunctuationString = trim.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,'')
     //if (trim.endsWith('.')) return trim.substr(0, trim.length - 1)
     return noPunctuationString
 }
