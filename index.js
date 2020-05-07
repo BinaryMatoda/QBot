@@ -125,7 +125,7 @@ const isWord2EqualsToWord1 = (word1, word2) =>{
 
 const prepareText = (text) => {
     const trim = text.trim()
-    const noPunctuationString = trim.replace(/.,"'=-:;!?*/g,'')
+    const noPunctuationString = trim.replace(/[.,"'=-:;!?*]/g,'')
     //if (trim.endsWith('.')) return trim.substr(0, trim.length - 1)
     return noPunctuationString
 }
