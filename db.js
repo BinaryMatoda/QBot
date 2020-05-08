@@ -70,7 +70,7 @@ const getQ = (url) => {
                         return getJsonQuestion(divBegin + question + divEnd)
                     }
                     else return getJsonQuestion(question)
-                })
+                }).filter(item=>item.text && item.answer)
                 //console.log(jsonQuestionList)
                 const noAnswer = jsonQuestionList.filter(q => !q.answer2)
                 if (noAnswer.length > 0) {
