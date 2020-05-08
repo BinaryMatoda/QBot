@@ -7,7 +7,7 @@ const { TELEGRAM_BOT_TOKEN } = process.env
 const URL = process.env.dbUrl || 'https://db.chgk.info/random'
 const helpText = 'Бот задает вопросы из базы данных ЧГК. Для игры отправьте боту /new. Чтобы получить ответ /a';
 
-const makeChgkUrl = (complexity = 1, type = 1, showAmswer = true, limit = 1) => {
+const makeChgkUrl = (complexity = 1, type = 1, showAmswer = true, limit = 10) => {
     return `${URL}${showAmswer ? '/answers' : ''}${type ? `/types${type}` : ''}${complexity ? `/complexity${complexity}` : ''}${limit ? `/limit${limit}` : ''}`
 }
 
@@ -18,23 +18,28 @@ bot.start((ctx) => ctx.reply(helpText))
 bot.help((ctx) => ctx.reply(helpText))
 bot.command('new', async (ctx) => {
     const sessionKey = getSessionKey(ctx)
-    if (m_activeContexts[sessionKey]) {
-        ctx.replyWithHTML(prepareAnswer(m_activeContexts[sessionKey]))
+    const oldSessionData = m_activeContexts[sessionKey]
+    if (oldSessionData) {
+        oldSessionData.correct = oldSessionData.correct || 0
+        oldSessionData.total = (oldSessionData.total || 0) + 1
+        ctx.replyWithHTML(prepareAnswer(oldSessionData))
     }
     const data = await getQ(makeChgkUrl(1, 1));
     console.log(data)
-    m_activeContexts[sessionKey] = data
-    ctx.reply(prepareQuestion(data))
+    m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
+    ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
     return
 })
 bot.command('a', async (ctx) => {
     const sessionKey = getSessionKey(ctx)
     const data = { ...m_activeContexts[sessionKey] }
+    data.correct = data.correct || 0
+    data.total = (data.total || 0) + 1
     m_activeContexts[sessionKey] = null
     ctx.replyWithHTML(prepareAnswer(data))
     const _DATA = await getQ(makeChgkUrl());
-    m_activeContexts[sessionKey] = _DATA
-    ctx.reply(prepareQuestion(_DATA))
+    m_activeContexts[sessionKey] = { ..._DATA, correct: data.correct, total: data.total }
+    ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
     return
 })
 bot.on('message', async (ctx) => {
@@ -44,10 +49,12 @@ bot.on('message', async (ctx) => {
     const data = m_activeContexts[sessionKey]
     if (data) {
         if (isCorrectAnswer(data, msg)) {
+            data.correct = data.correct + 1
+            data.total = data.total + 1
             ctx.replyWithHTML(prepareAnswer(data))
             const _data = await getQ(makeChgkUrl());
             console.log(_data)
-            m_activeContexts[sessionKey] = _data
+            m_activeContexts[sessionKey] = { ..._data, correct: data.correct, total: data.total }
             ctx.reply(prepareQuestion(_data))
             return
         }
@@ -72,8 +79,9 @@ const getSessionKey = (ctx) => {
 const prepareAnswer = (data) => {
     return data && Object.keys(data).length > 0
         ? `Ответ:${data.answer}
-${ data.comment ? `Комментарий:${data.comment}\\n` : ''}Источник:${data.source}
+${ data.comment ? `Комментарий:${data.comment}\n` : ''}Источник:${data.source}
 Автор:${data.author}
+Отвечено:${data.correct}/${data.total}
 `
         : 'Вопрос не задан. Начните игру с команды /new'
 }
@@ -91,41 +99,41 @@ const isCorrectAnswer = (data, myAnswer) => {
 
     const hypotese = prepareText(myAnswer)
     const ANSWER = prepareText(data.answer)
-    if (areSentencesEqual(ANSWER,hypotese)) return true
+    if (areSentencesEqual(ANSWER, hypotese)) return true
 
     var isAnswer = false
     const answers = data.answer2.split(/[,;|]/)
     answers.map(_answer => {
         const answer = prepareText(_answer)
-        if (areSentencesEqual(answer,hypotese)) isAnswer = true
+        if (areSentencesEqual(answer, hypotese)) isAnswer = true
     })
     return isAnswer
 }
 
-const areSentencesEqual = (s1,s2) =>{
+const areSentencesEqual = (s1, s2) => {
     const wos1 = s1.split(' ')
     const wos2 = s2.split(' ')
-    if(wos1.length!==wos2.length) return false
-    const numberOfMatchedWords = wos1.map(word1=>{
-        return wos2.filter(word2=>isWord2EqualsToWord1(word1,word2)).length>0
-    }).filter(result=>result).length
-    if(numberOfMatchedWords === wos1.length) return true
+    if (wos1.length !== wos2.length) return false
+    const numberOfMatchedWords = wos1.map(word1 => {
+        return wos2.filter(word2 => isWord2EqualsToWord1(word1, word2)).length > 0
+    }).filter(result => result).length
+    if (numberOfMatchedWords === wos1.length) return true
     return false
 }
 
-const isWord2EqualsToWord1 = (word1, word2) =>{
-    if(word1 === word2) return true
-    const d = levenshtein(word1,word2)
+const isWord2EqualsToWord1 = (word1, word2) => {
+    if (word1 === word2) return true
+    const d = levenshtein(word1, word2)
     const len = word1.length
-    if(len<6 && d<2) return true
-    else if(len<9 && d<3) return true
-    else if(len>8 && d<4) return true
+    if (len < 6 && d < 2) return true
+    else if (len < 9 && d < 3) return true
+    else if (len > 8 && d < 4) return true
     return false
 }
 
 const prepareText = (text) => {
     const trim = text.trim()
-    const noPunctuationString = trim.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,'')
+    const noPunctuationString = trim.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
     //if (trim.endsWith('.')) return trim.substr(0, trim.length - 1)
     return noPunctuationString
 }
