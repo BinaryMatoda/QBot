@@ -2,7 +2,7 @@ require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const session = require('telegraf/session')
 const { getQ } = require('./db')
-const { upsertItem } = require('./cosmosHelper')
+const { upsertItem, readItem } = require('./cosmosHelper')
 
 
 var m_activeContexts = {}
@@ -20,18 +20,19 @@ bot.use(session())
 bot.start((ctx) => { ctx.reply(helpText) })
 bot.help((ctx) => ctx.reply(helpText))
 bot.command('new', async (ctx) => {
-    const sessionKey = getSessionKey(ctx)
-    const oldSessionData = m_activeContexts[sessionKey]
-    if (oldSessionData) {
-        oldSessionData.correct = oldSessionData.correct || 0
-        oldSessionData.total = (oldSessionData.total || 0) + 1
-        ctx.replyWithHTML(prepareAnswer(oldSessionData))
-    }
-    const data = await getQ(makeChgkUrl(1, 1));
-    console.log(data)
-    m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
-    ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
     try {
+        const sessionKey = getSessionKey(ctx)
+        const oldSessionData = m_activeContexts[sessionKey] || await readItem(process.env.databaseId, process.env.containerId, sessionKey) || null
+        if (oldSessionData) {
+            oldSessionData.correct = oldSessionData.correct || 0
+            oldSessionData.total = (oldSessionData.total || 0) + 1
+            ctx.replyWithHTML(prepareAnswer(oldSessionData))
+        }
+        const data = await getQ(makeChgkUrl(1, 1));
+        console.log(data)
+        m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
+        ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
+
         await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
     }
     catch (exception) {
@@ -40,16 +41,19 @@ bot.command('new', async (ctx) => {
     return
 })
 bot.command('a', async (ctx) => {
-    const sessionKey = getSessionKey(ctx)
-    const data = { ...m_activeContexts[sessionKey] }
-    data.correct = data.correct || 0
-    data.total = (data.total || 0) + 1
-    m_activeContexts[sessionKey] = null
-    ctx.replyWithHTML(prepareAnswer(data))
-    const _DATA = await getQ(makeChgkUrl());
-    m_activeContexts[sessionKey] = { ..._DATA, correct: data.correct, total: data.total }
-    ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
     try {
+        const sessionKey = getSessionKey(ctx)
+        const oldSessionData = m_activeContexts[sessionKey] || await readItem(process.env.databaseId, process.env.containerId, sessionKey) || null
+        if (oldSessionData) {
+            oldSessionData.correct = oldSessionData.correct || 0
+            oldSessionData.total = (oldSessionData.total || 0) + 1
+            ctx.replyWithHTML(prepareAnswer(oldSessionData))
+        }
+        const data = await getQ(makeChgkUrl(1, 1));
+        console.log(data)
+        m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
+        ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
+
         await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
     }
     catch (exception) {
@@ -58,31 +62,37 @@ bot.command('a', async (ctx) => {
     return
 })
 bot.on('message', async (ctx) => {
-    if (!ctx.message || !ctx.message.text) return
-    var msg = ctx.message.text.trim()
-    var sessionKey = getSessionKey(ctx);
-    const data = m_activeContexts[sessionKey]
-    if (data) {
-        if (isCorrectAnswer(data, msg)) {
-            data.correct = data.correct + 1
-            data.total = data.total + 1
-            ctx.replyWithHTML(prepareAnswer(data))
-            const _data = await getQ(makeChgkUrl());
-            console.log(_data)
-            m_activeContexts[sessionKey] = { ..._data, correct: data.correct, total: data.total }
-            ctx.reply(prepareQuestion(_data))
-            try {
-                await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+    try {
+        if (!ctx.message || !ctx.message.text) return
+        var msg = ctx.message.text.trim()
+        var sessionKey = getSessionKey(ctx);
+        const data = m_activeContexts[sessionKey] || await readItem(process.env.databaseId, process.env.containerId, sessionKey)
+        if (data) {
+            if (isCorrectAnswer(data, msg)) {
+                data.correct = data.correct + 1
+                data.total = data.total + 1
+                ctx.replyWithHTML(prepareAnswer(data))
+                const _data = await getQ(makeChgkUrl());
+                console.log(_data)
+                m_activeContexts[sessionKey] = { ..._data, correct: data.correct, total: data.total }
+                ctx.reply(prepareQuestion(_data))
+                try {
+                    await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+                }
+                catch (exception) {
+                    console.log(exception.message)
+                }
+                return
             }
-            catch (exception) {
-                console.log(exception.message)
-            }
-            return
+            else return ctx.reply('Нет')
         }
-        else return ctx.reply('Нет')
+        else {
+            return ctx.reply('Вопрос не задан. Начните игру с команды /new')
+        }
     }
-    else {
-        return ctx.reply('Вопрос не задан. Начните игру с команды /new')
+    catch (exception) {
+        console.log(exception.message)
+        return ctx.reply('Ошибка. Начните игру с команды /new')
     }
 })
 bot.hears('hi', (ctx) => ctx.reply('Hey there'))
