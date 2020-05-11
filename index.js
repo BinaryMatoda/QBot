@@ -1,6 +1,9 @@
+require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const session = require('telegraf/session')
 const { getQ } = require('./db')
+const { upsertItem } = require('./cosmosHelper')
+
 
 var m_activeContexts = {}
 const { TELEGRAM_BOT_TOKEN } = process.env
@@ -14,7 +17,7 @@ const makeChgkUrl = (complexity = 1, type = 1, showAmswer = true, limit = 10) =>
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN)
 bot.use(session())
-bot.start((ctx) => ctx.reply(helpText))
+bot.start((ctx) => { ctx.reply(helpText) })
 bot.help((ctx) => ctx.reply(helpText))
 bot.command('new', async (ctx) => {
     const sessionKey = getSessionKey(ctx)
@@ -28,6 +31,7 @@ bot.command('new', async (ctx) => {
     console.log(data)
     m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
     ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
+    await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
     return
 })
 bot.command('a', async (ctx) => {
@@ -40,6 +44,7 @@ bot.command('a', async (ctx) => {
     const _DATA = await getQ(makeChgkUrl());
     m_activeContexts[sessionKey] = { ..._DATA, correct: data.correct, total: data.total }
     ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
+    await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
     return
 })
 bot.on('message', async (ctx) => {
@@ -56,6 +61,7 @@ bot.on('message', async (ctx) => {
             console.log(_data)
             m_activeContexts[sessionKey] = { ..._data, correct: data.correct, total: data.total }
             ctx.reply(prepareQuestion(_data))
+            await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
             return
         }
         else return ctx.reply('Нет')

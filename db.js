@@ -58,34 +58,33 @@ const getJsonQuestion = (html) => {
     return result
 }
 
+const getQuestionFromArray = (questions) => {
+    return questions[Math.floor(Math.random() * questions.length)];
+}
+
 const getQ = (url) => {
     console.log(url)
     return new Promise((resolve, reject) => {
         httpsGet(url)
             .then((fetchedData) => {
-                // console.log(fetchedData)
                 const questionList = fetchedData.split(divBegin)
                 const jsonQuestionList = questionList.map(question => {
                     if (question.includes(requiredPhrase)) {
                         return getJsonQuestion(divBegin + question + divEnd)
                     }
                     else return getJsonQuestion(question)
-                }).filter(item=>item.text && item.answer)
-                //console.log(jsonQuestionList)
+                }).filter(item => item.text && item.answer)
                 const noAnswer = jsonQuestionList.filter(q => !q.answer2)
                 if (noAnswer.length > 0) {
                     const withImage = noAnswer.filter(q => q.img)
-                    if (withImage.length > 0) resolve(withImage[0])
-                    resolve(noAnswer[0])
+                    if (withImage.length > 0) resolve(getQuestionFromArray(withImage))
+                    resolve(getQuestionFromArray(noAnswer))
                 }
                 else {
                     const withImage = jsonQuestionList.filter(q => q.img)
-                    if (withImage.length > 0) resolve(withImage[0])
-                    resolve(jsonQuestionList[0])
+                    if (withImage.length > 0) resolve(getQuestionFromArray(withImage))
+                    resolve(getQuestionFromArray(jsonQuestionList))
                 }
-                //getJsonQuestion(fetchedData)
-                //console.log(result)
-                //resolve(result)
             })
             .catch(error => {
                 console.log(error)
@@ -107,4 +106,5 @@ const getTextBetweenTags = (text, openTag, closeTag) => {
     }
     return ''
 }
+
 exports.getQ = getQ
