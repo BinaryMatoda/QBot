@@ -31,7 +31,12 @@ bot.command('new', async (ctx) => {
     console.log(data)
     m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
     ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
-    await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+    try {
+        await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+    }
+    catch (exception) {
+        console.log(exception.message)
+    }
     return
 })
 bot.command('a', async (ctx) => {
@@ -44,7 +49,12 @@ bot.command('a', async (ctx) => {
     const _DATA = await getQ(makeChgkUrl());
     m_activeContexts[sessionKey] = { ..._DATA, correct: data.correct, total: data.total }
     ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
-    await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+    try {
+        await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+    }
+    catch (exception) {
+        console.log(exception.message)
+    }
     return
 })
 bot.on('message', async (ctx) => {
@@ -61,7 +71,12 @@ bot.on('message', async (ctx) => {
             console.log(_data)
             m_activeContexts[sessionKey] = { ..._data, correct: data.correct, total: data.total }
             ctx.reply(prepareQuestion(_data))
-            await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+            try {
+                await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+            }
+            catch (exception) {
+                console.log(exception.message)
+            }
             return
         }
         else return ctx.reply('Нет')
