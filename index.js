@@ -82,7 +82,7 @@ bot.command('new', async (ctx) => {
     try {
         const sessionKey = getSessionKey(ctx)
         const sessionData = await getSessionData(sessionKey)
-        if (!sessionData.waitFeedback) sendAnswer(ctx, sessionKey, sessionData)
+        if (sessionData && !sessionData.waitFeedback) sendAnswer(ctx, sessionKey, sessionData)
         await sendQuestion(ctx, sessionKey, sessionData)
     }
     catch (exception) {
@@ -94,7 +94,7 @@ bot.command('a', async (ctx) => {
     try {
         const sessionKey = getSessionKey(ctx)
         const sessionData = await getSessionData(sessionKey)
-        if (sessionData.waitFeedback) return
+        if (sessionData && sessionData.waitFeedback) return
         sendAnswer(ctx, sessionKey, sessionData)
         await sendQuestion(ctx, sessionKey, sessionData)
     }
@@ -107,7 +107,7 @@ bot.command('like', async (ctx) => {
     try {
         const sessionKey = getSessionKey(ctx)
         const sessionData = await getSessionData(sessionKey)
-        if (sessionData.waitFeedback) {
+        if (sessionData && sessionData.waitFeedback) {
             const questionId = crypto.createHash('md5').update(sessionData.body).digest('hex')
             const question = await readItem(process.env.databaseId, process.env.questionContainerId, questionId)
             const newQuestion = {
@@ -136,7 +136,7 @@ bot.on('message', async (ctx) => {
             try {
                 const sessionKey = getSessionKey(ctx)
                 const sessionData = await getSessionData(sessionKey)
-                if (!sessionData.waitFeedback) sendAnswer(ctx, sessionKey, sessionData)
+                if (sessionData && !sessionData.waitFeedback) sendAnswer(ctx, sessionKey, sessionData)
                 await sendQuestion(ctx, sessionKey, sessionData)
             }
             catch (exception) {
@@ -148,7 +148,7 @@ bot.on('message', async (ctx) => {
             try {
                 const sessionKey = getSessionKey(ctx)
                 const sessionData = await getSessionData(sessionKey)
-                if (sessionData.waitFeedback) return
+                if (sessionData && sessionData.waitFeedback) return
                 sendAnswer(ctx, sessionKey, sessionData)
                 await sendQuestion(ctx, sessionKey, sessionData)
             }
@@ -164,7 +164,7 @@ bot.on('message', async (ctx) => {
             if (isCorrectAnswer(sessionData, msg)) {
                 sessionData.correct = sessionData.correct + 1
                 const answerTimestamp = +new Date()
-                console.log(answerTimestamp, sessionData.timestamp, answerTimestamp - sessionData.timestamp)
+                //console.log(answerTimestamp, sessionData.timestamp, answerTimestamp - sessionData.timestamp)
                 if (answerTimestamp - sessionData.timestamp < 1000 * 5 * 60) {
                     sessionData.waitFeedback = true
                     console.log('wait feedback...')
