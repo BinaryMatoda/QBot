@@ -3,17 +3,76 @@ const { Telegraf } = require('telegraf')
 const session = require('telegraf/session')
 const { getQ } = require('./db')
 const { upsertItem, readItem } = require('./cosmosHelper')
-
+const crypto = require('crypto')
 
 var m_activeContexts = {}
 const { TELEGRAM_BOT_TOKEN } = process.env
 const URL = process.env.dbUrl || 'https://db.chgk.info/random'
 const helpText = 'Бот задает вопросы из базы данных ЧГК. Для игры отправьте боту /new. Чтобы получить ответ /a';
-
+const feedbackText = 'Понравился вопрос? Отправьте /like. Для игры отправьте боту /new';
+const noFeedbackIsWaiting = 'Команда не ожидается. Для игры отправьте боту /new'
+const thankyou = 'Спасибо!'
 const makeChgkUrl = (complexity = 1, type = 1, showAmswer = true, limit = 10) => {
-    return `${URL}${showAmswer ? '/answers' : ''}${type ? `/types${type}` : ''}${complexity ? `/complexity${complexity}` : ''}${limit ? `/limit${limit}` : ''}`
+    const r = getRandomInt(Math.pow(10, 7))
+    return `${URL}${showAmswer ? '/answers' : ''}${type ? `/types${type}` : ''}${complexity ? `/complexity${complexity}` : ''}/${Math.pow(10, 8) + r}${limit ? `/limit${limit}` : ''}`
 }
 
+const getRandomInt = (max) => {
+    return Math.floor(Math.random() * Math.floor(max));
+}
+
+const getSessionData = async (sessionKey) => {
+    if (m_activeContexts[sessionKey]) return m_activeContexts[sessionKey]
+    try {
+        const dbSession = await readItem(process.env.databaseId, process.env.containerId, sessionKey)
+        return dbSession
+    }
+    catch (exception) {
+        console.log(exception.message)
+        throw exception
+    }
+}
+
+const setSessionData = async (sessionKey, data) => {
+    m_activeContexts[sessionKey] = data
+    try {
+        await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+    }
+    catch (exception) {
+        console.log(exception.message)
+        throw exception
+    }
+}
+
+const sendAnswer = async (ctx, sessionKey, sessionData) => {
+    if (sessionData) {
+        // sessionData.correct = sessionData.correct || 0
+        // sessionData.total = (sessionData.total || 0) + 1
+        ctx.replyWithHTML(prepareAnswer(sessionData))
+        return sessionData
+    }
+}
+
+const sendQuestion = async (ctx, sessionKey, sessionData) => {
+    try {
+        const data = await getQ(makeChgkUrl(1, 1));
+        console.log(data)
+        if (!sessionData) sessionData = await getSessionData(sessionKey)
+        const timestamp = +new Date()
+        const newSessionData = {
+            ...data,
+            timestamp,
+            correct: sessionData ? sessionData.correct : 0,
+            total: sessionData && sessionData.total ? sessionData.total + 1 : 1
+        }
+        await setSessionData(sessionKey, newSessionData)
+        ctx.reply(prepareQuestion(newSessionData))
+    }
+    catch (exception) {
+        console.log(exception.message)
+        throw exception
+    }
+}
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN)
 bot.use(session())
@@ -22,18 +81,9 @@ bot.help((ctx) => ctx.reply(helpText))
 bot.command('new', async (ctx) => {
     try {
         const sessionKey = getSessionKey(ctx)
-        const oldSessionData = m_activeContexts[sessionKey] || await readItem(process.env.databaseId, process.env.containerId, sessionKey) || null
-        if (oldSessionData) {
-            oldSessionData.correct = oldSessionData.correct || 0
-            oldSessionData.total = (oldSessionData.total || 0) + 1
-            ctx.replyWithHTML(prepareAnswer(oldSessionData))
-        }
-        const data = await getQ(makeChgkUrl(1, 1));
-        console.log(data)
-        m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
-        ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
-
-        await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+        const sessionData = await getSessionData(sessionKey)
+        if (!sessionData.waitFeedback) sendAnswer(ctx, sessionKey, sessionData)
+        await sendQuestion(ctx, sessionKey, sessionData)
     }
     catch (exception) {
         console.log(exception.message)
@@ -43,18 +93,35 @@ bot.command('new', async (ctx) => {
 bot.command('a', async (ctx) => {
     try {
         const sessionKey = getSessionKey(ctx)
-        const oldSessionData = m_activeContexts[sessionKey] || await readItem(process.env.databaseId, process.env.containerId, sessionKey) || null
-        if (oldSessionData) {
-            oldSessionData.correct = oldSessionData.correct || 0
-            oldSessionData.total = (oldSessionData.total || 0) + 1
-            ctx.replyWithHTML(prepareAnswer(oldSessionData))
+        const sessionData = await getSessionData(sessionKey)
+        if (sessionData.waitFeedback) return
+        sendAnswer(ctx, sessionKey, sessionData)
+        await sendQuestion(ctx, sessionKey, sessionData)
+    }
+    catch (exception) {
+        console.log(exception.message)
+    }
+    return
+})
+bot.command('like', async (ctx) => {
+    try {
+        const sessionKey = getSessionKey(ctx)
+        const sessionData = await getSessionData(sessionKey)
+        if (sessionData.waitFeedback) {
+            const questionId = crypto.createHash('md5').update(sessionData.body).digest('hex')
+            const question = await readItem(process.env.databaseId, process.env.questionContainerId, questionId)
+            const newQuestion = {
+                id: question ? question.id : questionId,
+                body: question ? question.body : sessionData.body,
+                likeCounter: question && question.likeCounter ? question.likeCounter + 1 : 1,
+            }
+            await upsertItem(process.env.databaseId, process.env.questionContainerId, questionId, newQuestion)
+            ctx.reply(thankyou)
+            await sendQuestion(ctx, sessionKey, sessionData)
         }
-        const data = await getQ(makeChgkUrl(1, 1));
-        console.log(data)
-        m_activeContexts[sessionKey] = { ...data, correct: oldSessionData ? oldSessionData.correct : 0, total: oldSessionData ? oldSessionData.total : 0 }
-        ctx.reply(prepareQuestion(m_activeContexts[sessionKey]))
-
-        await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+        else {
+            ctx.reply(noFeedbackIsWaiting)
+        }
     }
     catch (exception) {
         console.log(exception.message)
@@ -64,24 +131,47 @@ bot.command('a', async (ctx) => {
 bot.on('message', async (ctx) => {
     try {
         if (!ctx.message || !ctx.message.text) return
-        var msg = ctx.message.text.trim()
+        var msg = ctx.message.text.trim().toLowerCase()
+        if (msg === '/еще' || msg === '/ещё') {
+            try {
+                const sessionKey = getSessionKey(ctx)
+                const sessionData = await getSessionData(sessionKey)
+                if (!sessionData.waitFeedback) sendAnswer(ctx, sessionKey, sessionData)
+                await sendQuestion(ctx, sessionKey, sessionData)
+            }
+            catch (exception) {
+                console.log(exception.message)
+            }
+            return
+        }
+        if (msg === '/ответ') {
+            try {
+                const sessionKey = getSessionKey(ctx)
+                const sessionData = await getSessionData(sessionKey)
+                if (sessionData.waitFeedback) return
+                sendAnswer(ctx, sessionKey, sessionData)
+                await sendQuestion(ctx, sessionKey, sessionData)
+            }
+            catch (exception) {
+                console.log(exception.message)
+            }
+            return
+        }
+
         var sessionKey = getSessionKey(ctx);
-        const data = m_activeContexts[sessionKey] || await readItem(process.env.databaseId, process.env.containerId, sessionKey)
-        if (data) {
-            if (isCorrectAnswer(data, msg)) {
-                data.correct = data.correct + 1
-                data.total = data.total + 1
-                ctx.replyWithHTML(prepareAnswer(data))
-                const _data = await getQ(makeChgkUrl());
-                console.log(_data)
-                m_activeContexts[sessionKey] = { ..._data, correct: data.correct, total: data.total }
-                ctx.reply(prepareQuestion(_data))
-                try {
-                    await upsertItem(process.env.databaseId, process.env.containerId, sessionKey, m_activeContexts[sessionKey])
+        const sessionData = await getSessionData(sessionKey)
+        if (sessionData) {
+            if (isCorrectAnswer(sessionData, msg)) {
+                sessionData.correct = sessionData.correct + 1
+                const answerTimestamp = +new Date()
+                console.log(answerTimestamp, sessionData.timestamp, answerTimestamp - sessionData.timestamp)
+                if (answerTimestamp - sessionData.timestamp < 1000 * 5 * 60) {
+                    sessionData.waitFeedback = true
+                    console.log('wait feedback...')
+                    await setSessionData(sessionKey, sessionData)
                 }
-                catch (exception) {
-                    console.log(exception.message)
-                }
+                sendAnswer(ctx, sessionKey, sessionData)
+                if (!sessionData.waitFeedback) await sendQuestion(ctx, sessionKey, sessionData)
                 return
             }
             else return ctx.reply('Нет')
@@ -95,7 +185,6 @@ bot.on('message', async (ctx) => {
         return ctx.reply('Ошибка. Начните игру с команды /new')
     }
 })
-bot.hears('hi', (ctx) => ctx.reply('Hey there'))
 bot.launch()
 
 const getSessionKey = (ctx) => {
@@ -113,6 +202,8 @@ const prepareAnswer = (data) => {
 ${ data.comment ? `Комментарий:${data.comment}\n` : ''}Источник:${data.source}
 Автор:${data.author}
 Отвечено:${data.correct}/${data.total}
+********
+${data.waitFeedback ? feedbackText : ''}
 `
         : 'Вопрос не задан. Начните игру с команды /new'
 }
@@ -164,7 +255,7 @@ const isWord2EqualsToWord1 = (word1, word2) => {
 
 const prepareText = (text) => {
     const trim = text.trim()
-    const noPunctuationString = trim.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+    const noPunctuationString = trim.replace(/[.,\/#!$%\^&\*;:{}=_`~()]/g, '')
     //if (trim.endsWith('.')) return trim.substr(0, trim.length - 1)
     return noPunctuationString
 }
