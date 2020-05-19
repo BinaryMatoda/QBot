@@ -25,6 +25,7 @@
   "dependencies": {
     "@azure/cosmos": "^3.6.3",
     "dotenv": "^8.2.0",
+    "mongodb": "^3.5.7",
     "telegraf": "^3.38.0"
   }
 }

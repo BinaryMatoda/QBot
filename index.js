@@ -2,7 +2,7 @@ require('dotenv').config()
 const { Telegraf } = require('telegraf')
 const session = require('telegraf/session')
 const { getQ } = require('./db')
-const { upsertItem, readItem } = require('./cosmosHelper')
+const { upsertItem, readItem } = require('./storageConnector')
 const crypto = require('crypto')
 
 var m_activeContexts = {}
