@@ -14,10 +14,6 @@ const helpText = 'Бот задает вопросы из базы данных 
 const feedbackText = 'Понравился вопрос? Отправьте /like. Для игры отправьте боту /new';
 const noFeedbackIsWaiting = 'Команда не ожидается. Для игры отправьте боту /new'
 const thankyou = 'Спасибо!'
-const makeChgkUrl = (complexity = 1, type = 1, showAmswer = true, limit = 10) => {
-    const r = getRandomInt(Math.pow(10, 7))
-    return `${URL}${showAmswer ? '/answers' : ''}${type ? `/types${type}` : ''}${complexity ? `/complexity${complexity}` : ''}/${Math.pow(10, 8) + r}${limit ? `/limit${limit}` : ''}`
-}
 
 const makeChgkUrl2 = (complexity = 1, type = 1, showAmswer = true, limit = 10) => {
     const r = getRandomInt(Math.pow(10, 7))
