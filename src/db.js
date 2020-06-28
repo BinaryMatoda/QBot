@@ -63,7 +63,7 @@ const getQuestionFromArray = (questions) => {
 }
 
 const getQ = (url) => {
-    console.log(url)
+    //console.log(url)
     return new Promise((resolve, reject) => {
         httpsGet(url)
             .then((fetchedData) => {

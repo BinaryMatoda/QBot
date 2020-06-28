@@ -1,23 +1,31 @@
-require('dotenv').config()
-const { Telegraf } = require('telegraf')
-const session = require('telegraf/session')
-const { getQ } = require('./db')
-const { upsertItem, readItem } = require('./storageConnector')
-const crypto = require('crypto')
-const { Actions } = require('./actions')
-const { isCorrectAnswer } = require('./textHelper')
+import "@babel/polyfill"
+//require('dotenv').config()
+import dotenvConfig from 'dotenv/config'
+//dotenv.config()
+import { Telegraf } from 'telegraf'
+import session from 'telegraf/session'
+import crypto from 'crypto'
+import { isCorrectAnswer } from './textHelper'
+import { Actions } from './actions'
+import { upsertItem, readItem } from './storageConnector'
+//const { Telegraf } = require('telegraf')
+//const session = require('telegraf/session')
+//const { getQ } = require('./db')
+//const { upsertItem, readItem } = require('./storageConnector')
+//const crypto = require('crypto')
+//const { Actions } = require('./actions')
+//const { isCorrectAnswer } = require('./textHelper')
 
 var m_activeContexts = {}
 const { TELEGRAM_BOT_TOKEN } = process.env
-const URL = process.env.dbUrl || 'https://db.chgk.info/random'
 const helpText = 'Бот задает вопросы из базы данных ЧГК. Для игры отправьте боту /new. Чтобы получить ответ /a';
 const feedbackText = 'Понравился вопрос? Отправьте /like. Для игры отправьте боту /new';
 const noFeedbackIsWaiting = 'Команда не ожидается. Для игры отправьте боту /new'
 const thankyou = 'Спасибо!'
 
 const makeChgkUrl2 = (complexity = 1, type = 1, showAmswer = true, limit = 10) => {
-    const r = getRandomInt(Math.pow(10, 7))
-    const URL = process.env.dbUrl || 'http://18.185.5.19'
+    //const r = getRandomInt(Math.pow(10, 7))
+    const URL = process.env.dbUrl || 'http://18.196.94.147'
     return `${URL}/api/chgk/type/${type}/complexity/${complexity}/limit/${limit}`
 }
 
@@ -59,7 +67,6 @@ const sendQuestion = async (ctx, sessionKey, sessionData) => {
     try {
         const act = new Actions()
         const data = await act.getQuestions(makeChgkUrl2(1, 1), 'http')
-        console.log(data)
         if (!sessionData) sessionData = await getSessionData(sessionKey)
         const timestamp = +new Date()
         const newSessionData = {

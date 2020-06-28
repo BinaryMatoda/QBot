@@ -5,9 +5,7 @@ const isCorrectAnswer = (data, myAnswer) => {
     const hypotese = prepareText(myAnswer)
     const ANSWERS = prepareText(data.answer)
     const allAnswers = getAllOptionalAnswers(ANSWERS)
-    console.log(ANSWERS, allAnswers)
     if (allAnswers.find(ANSWER => areSentencesEqual(ANSWER, hypotese))) return true
-    //if (areSentencesEqual(ANSWER, hypotese)) return true
 
     var isAnswer = false
     const answers = data.answer2.split(/[,;|]/)
@@ -15,8 +13,6 @@ const isCorrectAnswer = (data, myAnswer) => {
         const answer = prepareText(_answer)
         const allAnswers = getAllOptionalAnswers(answer)
         if (allAnswers.find(ANSWER => areSentencesEqual(ANSWER, hypotese))) return true
-
-        //    if (areSentencesEqual(answer, hypotese)) isAnswer = true
     })
     return isAnswer
 }
