@@ -1,5 +1,5 @@
 const assert = require('assert');
-const { isCorrectAnswer } = require('../textHelper');
+const { isCorrectAnswer } = require('../dist/textHelper');
 
 describe('One word answer test', () => {
     const answers = ["Masters", "masters", "Matser", "master."]
