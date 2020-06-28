@@ -22,8 +22,8 @@ const upsertItem = async (databaseId, containerId, itemId, value) => {
 
 const readItem = async (databaseId, containerId, itemId) => {
     try {
+        console.log(database.id);
         const { database } = await client.databases.createIfNotExists({ id: databaseId });
-        //console.log(database.id);
         const { container } = await database.containers.createIfNotExists({ id: containerId });
         //console.log(container.id);
         const querySpec = {

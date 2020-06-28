@@ -11,11 +11,9 @@ class Actions {
     }
 
     async getQuestions(url, protocol = 'https') {
-        try {
+        try {            
             const response = await webRequest(url, 'GET', '', protocol)
-            //console.log(response)
             const jsonQuestionList = JSON.parse(response)
-            //console.log(jsonQuestionList)
             const noAnswer = jsonQuestionList.filter(q => !q.answer2 && q.answer.split(' ').length === 1)
             if (noAnswer.length > 0) {
                 const withImage = noAnswer.filter(q => q.imageLink)

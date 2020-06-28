@@ -34,7 +34,7 @@ const webRequest = (url, method = "GET", body = '', protocol = 'https') => {
             }
         }
         const req = protoCLient.request(post_options, res => {
-            console.log('statusCode:', res.statusCode)
+            //console.log('statusCode:', res.statusCode)
             res.setEncoding('utf8')
             // res.on('data', (d) => {
             //     resolve(d)

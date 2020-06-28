@@ -4,7 +4,8 @@
   "description": "Telegram bot",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "build": "babel src -d dist",
+    "start": "node ./dist/index.js",
     "test": "mocha tests"
   },
   "repository": {
@@ -24,11 +25,15 @@
   "homepage": "https://github.com/BinaryMatoda/QBot#readme",
   "dependencies": {
     "@azure/cosmos": "^3.6.3",
+    "@babel/polyfill": "^7.10.1",
     "dotenv": "^8.2.0",
     "mongodb": "^3.5.7",
     "telegraf": "^3.38.0"
   },
   "devDependencies": {
+    "@babel/cli": "^7.10.3",
+    "@babel/core": "^7.10.3",
+    "@babel/preset-env": "^7.10.3",
     "mocha": "^7.2.0"
   }
 }
