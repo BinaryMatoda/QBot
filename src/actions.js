@@ -1,4 +1,4 @@
-const { webGet, webRequest } = require('./webClient')
+import webRequest from './webClient'
 
 const getQuestionFromArray = (questions) => {
     return questions[Math.floor(Math.random() * questions.length)];
