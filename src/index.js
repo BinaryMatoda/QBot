@@ -200,9 +200,13 @@ bot.on('message', async (ctx) => {
 bot.launch()
 
 const getSessionKey = (ctx) => {
-    if (ctx.from && ctx.chat) {
+    //console.log('from:', ctx.from, 'chat:', ctx.chat)
+    if (ctx.from && ctx.chat && ctx.chat.type && ctx.chat.type === 'private') {
         return `${ctx.from.id}:${ctx.chat.id}`
-    } else if (ctx.from && ctx.inlineQuery) {
+    } else if (ctx.from && ctx.chat && ctx.chat.type && ctx.chat.type === 'group') {
+        return `${ctx.chat.id}:${ctx.chat.title}`
+    }
+    else if (ctx.from && ctx.inlineQuery) {
         return `${ctx.from.id}:${ctx.from.id}`
     }
     return null
