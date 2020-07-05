@@ -58,7 +58,7 @@ const setSessionData = async (sessionKey, data) => {
 
 const sendAnswer = async (ctx, sessionKey, sessionData) => {
     if (sessionData) {
-        ctx.replyWithHTML(prepareAnswer(sessionData))
+        ctx.reply(prepareAnswer(sessionData))
         return sessionData
     }
 }
@@ -66,7 +66,7 @@ const sendAnswer = async (ctx, sessionKey, sessionData) => {
 const sendQuestion = async (ctx, sessionKey, sessionData) => {
     try {
         const act = new Actions()
-        const data = await act.getQuestions(makeChgkUrl2(1, 1), 'http')
+        const data = await act.getQuestion(makeChgkUrl2(1, 1), 'http')
         if (!sessionData) sessionData = await getSessionData(sessionKey)
         const timestamp = +new Date()
         const newSessionData = {
